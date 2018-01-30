@@ -1,14 +1,14 @@
 #!/bin/bash
 #set -x
  
-# Titulo        : "backupMediaWIki.dump.sh"
-# Descricao     : Este script gera arquivo unico (app+bd) da wiki p/ backup remoto.
-# Autor         : Aecio Junior <aeciojr@gmail.com>
-# Data          : 28 de Agosto de 2015.
-# Versao        : 1.1 - Adicionado comentarios; 
+# Title         : "backupMediaWIki.dump.sh"
+# Description   : This script make a file with (app+db) backup to remote sync;
+# Author        : Aecio Junior <aecio.barreto.junior@concrete.com.br>
+# Date          : 28 de Agosto de 2015.
+# Version       : 1.1 - Translated comments 
 # Usage         : ./backupMediaWIki.dump.sh
  
-##---- Variaveis de configuracao ----##
+##---- Config vars ----##
 
 BDHost="192.168.105.173"
 BDDataBase="WIKI"
@@ -21,29 +21,29 @@ DirBackupTemp="/var/backups/MediaWiki"
 DirLog="/var/log"
 MailList="aeciojr@gmail.com"
 
-##--- Variaveis de script ---##
+##--- Script vars ---##
 
 Basename="`basename $0`"
 ArquivoLog="${DirLog}/${Basename}.log"
 PrefixBackup="BkpMediaWiki"
 
-##------ Funcoes ------------##
+##------ Functions ------------##
 
-# Funcao p/ obter data e hora em formato padrao
+# Function to get date time 
 _DataHora(){ date "+%Y%m%d_%H%M%S_$RANDOM"; }
 
-# Imprimir data e hora
+# Function to print date time
 _DataHoraPrint(){ date "+%Y/%m/%d %H:%M:%S"; }
 
-# Funcao para emitir output log
+# Function to print output log
 _Print(){
    local Flag="$( echo $1 | tr [:lower:] [:upper:])"
    echo -e "\n`_DataHoraPrint` [ $Flag ] $2 \n"
 }
 
-# Funcao para ativar/desativar flag de manutencao da Wiki
+# .. To [EN/DIS]able maintenence flag 
 _FlagPHPBackup(){
-   # Uso _FlagPHPBackup ON|OFF
+   # Usage _FlagPHPBackup ON|OFF
    local RC=0
    if [ $# -eq 1 ]
    then
@@ -53,17 +53,17 @@ _FlagPHPBackup(){
       elif [ "${Op}x" == "ONx" ]; then
          { sudo sed -i 's/^#$wgReadOnly/$wgReadOnly/' $ArquivoConfiguracoes && echo "FlagBkp [ wgReadOnly ] ATIVADA no $ArquivoConfiguracoes"; } || local RC=$?
       else
-         echo "Forneca argumento ON|OFF"
+         echo "Do supply argument ON|OFF"
          local RC=2
       fi
    else
-      echo "Forneca argumento ON|OFF"
+      echo "Do supply argument ON|OFF"
       local RC=3
    fi
    return $RC
 }
 
-# Geracal de tarball com arquivos da aplicacao
+# Packaging app files tarball
 _BackupSistemaArquivos(){
    local RC=0
    local Origem="${DirDocumentRootWiki}"
@@ -82,7 +82,7 @@ _BackupSistemaArquivos(){
    return $RC
 }
 
-# Dump do banco de dados
+# Dumping database (MySQL) 
 _BackupBancoDados(){
    local RC=0
    local Destino="${DirBackupTemp}/${PrefixBackup}.BD.`_DataHora`.sql"
@@ -99,7 +99,7 @@ _BackupBancoDados(){
    return $RC
 }
 
-# Criacao de tarball unico
+# Packaging both GZ's 
 _ArchiveAppBd(){
    local RC=0
    local OrigemAPP="$PathBackupAPP"
@@ -118,7 +118,7 @@ _ArchiveAppBd(){
    return $RC
 }
 
-# Remocao de arquivos desecessarios
+# Leaving temporary files 
 _LimpezaArquivosDump(){
    local RC=0
    echo "DirBackupTemp $DirBackupTemp"
@@ -127,39 +127,39 @@ _LimpezaArquivosDump(){
    return $RC
 }
  
-##--- Incio do script ---##
+##--- Begin code ---##
 
-# Inicia RC
+# Start RC
 RC=0
 {
 echo "#---- Inicio - Geracao de tarball (APP+BD) ----#"
 _Print INFO "Ativando flag de backup"
 
-# Ativa a flag de manutencao ou muda o RC em caso de ERRO
+# Enable maintenance flag 
 _FlagPHPBackup on || RC=$?
 if [ $RC -eq 0 ]; then
    _Print INFO "Realizando backup dos arquivos de sistema"
    
-   # Realiza o backup do sistema de arquivos ou muda o RC em caso de ERRO
+   # Backup app files 
    _BackupSistemaArquivos || RC=$?
    if [ $RC -eq 0 ]; then
       _Print INFO "Extraindo dump do database"
 
-      # Realiza o backup do banco de dados ou muda o RC em caso de ERRO
+      # Database backup
       _BackupBancoDados || RC=$?
       if [ $RC -eq 0 ]; then
          _Print INFO "Arquivando arquivos e dump em tarball"
 	 
-	 # Cria tarball unico
+	 # Main tarball 
          _ArchiveAppBd || RC=$?
          if [ $RC -eq 0 ]; then
             _Print INFO "Desativando flag de backup"
 
-	    # Desativa a flag de manuntencao
+	    # Disable maintenance flag 
             _FlagPHPBackup off || RC=$?
             if [ $RC -eq 0 ]; then
 
-	       # Emite status p/ debugging
+	       # Statuses for debugging 
                _Print SUCESS "Flag de backup desativada"
                _Print SUCESS "Backup APP + BD realizado com sucesso"
                _Print INFO "Arquivo final p/ sincronizacao remota \n\n\t>>>>>@${PathBackupAppBd}@<<<<"
@@ -188,11 +188,11 @@ elif [ $RC -eq  ]; then
 fi
 echo "#---- Fim - Geracao de tarball (APP+BD) ----#"
 
-# Realiza o append da output em arquivo de log
+# Output append log 
 } | sudo tee --append $ArquivoLog | sudo mail -s "Backup MediaWiki - Geracao de Tarball (APP+BD)" "$MailList"
  
 echo "Para maiores detalhes acesse: @${ArquivoLog}"
  
 exit $RC
 
-##--- Fim do script ---##
+##--- End code ---##
